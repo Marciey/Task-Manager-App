@@ -1,0 +1,103 @@
+@model IEnumerable<TaskManager.Models.TaskItem>
+
+@{
+    ViewData["Title"] = "My Tasks";
+}
+
+<main role="main">
+    <header>
+        <h2>@ViewData["Title"]</h2>
+    </header>
+    <section aria-label="Task Search and Actions">
+        <div class="row mb-4">
+            <nav class="col-md-8" aria-label="Task search and filter">
+                <form asp-action="Index" method="get" class="form-inline">
+                    <div class="input-group">
+                        <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Search tasks..." aria-label="Search tasks" />
+                        <select name="status" class="form-select" asp-items="Html.GetEnumSelectList<TaskManager.Models.TaskStatus>()" aria-label="Filter by status">
+                            <option value="">All Status</option>
+                        </select>
+                        <input type="date" name="dueDate" class="form-control" aria-label="Filter by due date" />
+                        <button type="submit" class="btn btn-primary">Search</button>
+                    </div>
+                </form>
+            </nav>
+            <div class="col-md-4 text-end">
+                <a asp-action="Create" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Create New Task
+                </a>
+            </div>
+        </div>
+    </section>
+    <section aria-label="Task List">
+        <div class="row">
+            @foreach (var task in Model)
+            {
+                <article class="col-md-4 mb-4" aria-label="Task: @task.Title">
+                    <div class="card h-100 @(task.DueDate.HasValue && task.DueDate.Value.Date < DateTime.Today ? "border-danger" : "")">
+                        <div class="card-body">
+                            <h5 class="card-title">@task.Title</h5>
+                            <p class="card-text">@task.Description</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-@(task.Status switch {
+                                    TaskManager.Models.TaskStatus.Pending => "warning",
+                                    TaskManager.Models.TaskStatus.InProgress => "info",
+                                    TaskManager.Models.TaskStatus.Completed => "success",
+                                    _ => "secondary"
+                                })">@task.Status</span>
+                                @if (task.DueDate.HasValue)
+                                {
+                                    <small class="text-muted">Due: @task.DueDate.Value.ToShortDateString()</small>
+                                }
+                            </div>
+                        </div>
+                        <footer class="card-footer">
+                            <div class="btn-group w-100">
+                                <button class="btn btn-outline-primary btn-sm status-btn" data-id="@task.Id" data-status="@TaskManager.Models.TaskStatus.Pending" aria-label="Mark as Pending">
+                                    <i class="bi bi-hourglass"></i>
+                                </button>
+                                <button class="btn btn-outline-info btn-sm status-btn" data-id="@task.Id" data-status="@TaskManager.Models.TaskStatus.InProgress" aria-label="Mark as In Progress">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                                <button class="btn btn-outline-success btn-sm status-btn" data-id="@task.Id" data-status="@TaskManager.Models.TaskStatus.Completed" aria-label="Mark as Completed">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
+                                <a asp-action="Edit" asp-route-id="@task.Id" class="btn btn-outline-secondary btn-sm" aria-label="Edit Task">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@task.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to delete this task?')" aria-label="Delete Task">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </footer>
+                    </div>
+                </article>
+            }
+        </div>
+    </section>
+    <aside aria-label="Task Widgets" style="display:none;"></aside>
+</main>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('.status-btn').click(function () {
+                var button = $(this);
+                var taskId = button.data('id');
+                var status = button.data('status');
+
+                $.post('/Tasks/UpdateStatus', { id: taskId, status: status })
+                    .done(function (response) {
+                        if (response.success) {
+                            location.reload();
+                        }
+                    })
+                    .fail(function () {
+                        alert('Failed to update task status');
+                    });
+            });
+        });
+    </script>
+} 
